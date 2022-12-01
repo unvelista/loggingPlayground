@@ -3,7 +3,7 @@ version: '3.8'
 services:  
   client:
     build:
-      context: src/
+      context: ${BASE}/src/
       args:
         - APPNAME=client
     entrypoint: client
@@ -12,15 +12,13 @@ services:
     logging:
       driver: "fluentd"
       options:
-        fluentd-address: localhost:24224
-    volumes:
-      - "./src/client:/src/client"
+        fluentd-address: 0.0.0.0:24224
     depends_on:
       - server
 
   server:
     build:
-      context: src/
+      context: ${BASE}/src/
       args:
         - APPNAME=server
     entrypoint: server
@@ -28,18 +26,16 @@ services:
       - .env
     expose:
       - ${SERVER_PORT}
-    volumes:
-      - "./src/server:/src/server"      
 
     logging:
       driver: "fluentd"
       options:
-        fluentd-address: localhost:24224
+        fluentd-address: 0.0.0.0:24224
     depends_on:
       - fluentd
 
   fluentd:
-    build: ./fluentd
+    build: ${BASE}/fluentd/
     ports:
       - 24224:24224
       - 24224:24224/udp
@@ -49,7 +45,7 @@ services:
 
   elasticsearch:
     build:
-      context: elasticsearch/
+      context: ${BASE}/elasticsearch/
       args:
         ELASTIC_VERSION: ${ELASTIC_VERSION}
     volumes:
@@ -70,7 +66,7 @@ services:
 
   kibana:
     build:
-      context: kibana/
+      context: ${BASE}/kibana/
       args:
         ELASTIC_VERSION: ${ELASTIC_VERSION}
     ports:
