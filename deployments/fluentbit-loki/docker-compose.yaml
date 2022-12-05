@@ -36,12 +36,8 @@ services:
       - fluentbit
 
   fluentbit:
-    image: fluent/fluent-bit:latest
+    build: ${BASE}/fluent-bit
     container_name: fluentbit
-    environment:
-      - LOKI_URL=http://loki:3100/loki/api/v1/push
-    volumes:
-      - ${BASE}/fluent-bit/config/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
     ports:
       - "${FLUENTBIT_PORT}:${FLUENTBIT_PORT}"
     depends_on:

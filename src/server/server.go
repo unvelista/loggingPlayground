@@ -20,15 +20,7 @@ var (
 )
 
 func main() {
-	fLogPath := "/server.log"
-	f, err := os.OpenFile(fLogPath, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		fmt.Printf("Failed to create logfile at %s: %+v", fLogPath, err)
-		panic(err)
-	}
-	defer f.Close()
-
-	logger = logging.InitLogger(f)
+	logger = logging.InitLogger()
 
 	startWebServerMux()
 }
@@ -46,10 +38,19 @@ func startWebServerMux() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		logger.Infoln("received request")
+	cnt := 0
 
-		fmt.Fprintf(w, "Hello")
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		logger.Infof("received request: #%d", cnt)
+
+		cnt++
+
+		// if cnt > 5 {
+		// 	panic("Waaaaaaaaa !!!")
+		// }
+
+		body := "Hello, world!"
+		w.Write([]byte(body))
 	})
 
 	logger.Infoln("Running server on", addr)
