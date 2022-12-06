@@ -11,5 +11,6 @@ func InitLogger() *logrus.Logger {
 	logger.SetFormatter(&logrus.JSONFormatter{})
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(logrus.InfoLevel)
+	logger.SetReportCaller(true)
 	return logger
 }

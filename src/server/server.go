@@ -49,7 +49,7 @@ func startWebServerMux() {
 		// 	panic("Waaaaaaaaa !!!")
 		// }
 
-		body := "Hello, world!"
+		body := fmt.Sprintf("Hello, world! %d", cnt)
 		w.Write([]byte(body))
 	})
 

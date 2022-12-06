@@ -2,6 +2,7 @@ version: '3.8'
 
 services:  
   client:
+    container_name: client
     build:
       context: ${BASE}/src/
       args:
@@ -9,15 +10,21 @@ services:
     entrypoint: client
     env_file:
       - .env
+    networks:
+      - lognet
     logging:
       driver: "fluentd"
       options:
-        fluentd-address: localhost:${FLUENTBIT_PORT}
         tag: "docker.{{.Name}}"
+        fluentd-address: localhost:24224
+        fluentd-async: "true"
+        fluentd-buffer-limit: 8192
+        fluentd-sub-second-precision: "true"
     depends_on:
       - server
 
   server:
+    container_name: server
     build:
       context: ${BASE}/src/
       args:
@@ -27,19 +34,24 @@ services:
       - .env
     expose:
       - ${SERVER_PORT}
+    networks:
+      - lognet
     logging:
       driver: "fluentd"
       options:
-        fluentd-address: localhost:${FLUENTBIT_PORT}
         tag: "docker.{{.Name}}"
-    depends_on:
-      - fluentbit
+        fluentd-address: localhost:24224
+        fluentd-async: "true"
+        fluentd-buffer-limit: 8192
+        fluentd-sub-second-precision: "true"
 
   fluentbit:
     build: ${BASE}/fluent-bit
     container_name: fluentbit
     ports:
-      - "${FLUENTBIT_PORT}:${FLUENTBIT_PORT}"
+      - 24224:24224
+    networks:
+      - lognet
     depends_on:
       - loki
 
@@ -48,26 +60,39 @@ services:
     container_name: loki
     ports:
       - 3100
+    networks:
+      - lognet
 
   grafana:
     build: ${BASE}/grafana
     container_name: grafana
     ports:
       - "3000:3000"
+    networks:
+      - lognet
     environment:
       GF_RENDERING_SERVER_URL: http://renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
       GF_LOG_FILTERS: rendering:debug
     volumes:
       - grafana:/var/lib/grafana
+    depends_on:
+      - renderer
 
   renderer:
     image: grafana/grafana-image-renderer:latest
     container_name: grafana-image-renderer
     expose:
       - 8081
+    networks:
+      - lognet
     environment:
       ENABLE_METRICS: "true"
+
+networks:
+  lognet:
+    name: lognet
+    driver: bridge
 
 volumes:
   grafana:
