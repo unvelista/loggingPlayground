@@ -13,4 +13,6 @@ RUN go mod download
 # Build binary
 COPY . .
 WORKDIR /src/${APPNAME}
-RUN go build -o /go/bin/${APPNAME} ${APPNAME}.go 
+RUN go build -o /go/bin/main ${APPNAME}.go 
+
+ENTRYPOINT [ "main" ]

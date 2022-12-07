@@ -1,18 +1,22 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"github.com/unvelista/loggingPlayground/src/logging"
+	"github.com/unvelista/loggingPlayground/src/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 const (
-	defaultHostname = "server"
-	defaultPort     = "8000"
+	serviceName           = "server"
+	endpoint              = "0.0.0.0:8000"
+	enableTracing         = true
+	otelCollectorEndpoint = "otel-collector:4317"
 )
 
 var (
@@ -22,21 +26,21 @@ var (
 func main() {
 	logger = logging.InitLogger()
 
+	if enableTracing {
+		tp, err := tracing.InitTracerProvider(
+			context.Background(), serviceName, otelCollectorEndpoint)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer tracing.FlushAndShutdownTracerProvider(context.Background(), tp)
+	}
+
 	startWebServerMux()
 }
 
 func startWebServerMux() {
-	hostname, ok := os.LookupEnv("SERVER_HOSTNAME")
-	if !ok {
-		hostname = defaultHostname
-	}
-	port, ok := os.LookupEnv("SERVER_PORT")
-	if !ok {
-		port = defaultPort
-	}
-	addr := fmt.Sprintf("%s:%s", hostname, port)
-
 	router := mux.NewRouter()
+	router.Use(otelmux.Middleware(serviceName))
 
 	cnt := 0
 
@@ -53,9 +57,13 @@ func startWebServerMux() {
 		w.Write([]byte(body))
 	})
 
-	logger.Infoln("Running server on", addr)
+	// router.HandleFunc("/healthcheck/", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.WriteHeader(http.StatusOK)
+	// })
+
+	logger.Infoln("Running server on", endpoint)
 	http.Handle("/", router)
-	err := http.ListenAndServe(addr, nil)
+	err := http.ListenAndServe(endpoint, nil)
 	if err != nil {
 		logger.Fatal(err)
 	}

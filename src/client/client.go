@@ -1,21 +1,27 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
-	"os"
 	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/unvelista/loggingPlayground/src/logging"
+	"github.com/unvelista/loggingPlayground/src/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
-	defaultHostname = "0.0.0.0"
-	defaultPort     = "8000"
-	reqInterval     = 1 // seconds
+	serviceName           = "client"
+	serverEndpoint        = "server:8000"
+	enableTracing         = true
+	otelCollectorEndpoint = "otel-collector:4317"
+	reqInterval           = 1 // seconds
+
 )
 
 var (
@@ -25,19 +31,20 @@ var (
 func main() {
 	logger = logging.InitLogger()
 
-	hostname, ok := os.LookupEnv("SERVER_HOSTNAME")
-	if !ok {
-		hostname = defaultHostname
+	if enableTracing {
+		tp, err := tracing.InitTracerProvider(
+			context.Background(), serviceName, otelCollectorEndpoint)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer tracing.FlushAndShutdownTracerProvider(context.Background(), tp)
 	}
-	port, ok := os.LookupEnv("SERVER_PORT")
-	if !ok {
-		port = defaultPort
-	}
-	url := fmt.Sprintf("http://%s:%s/", hostname, port)
+
+	logger.Infof("using %s as server endpoint", serverEndpoint)
 
 	req, err := http.NewRequest(
 		"GET",
-		url,
+		fmt.Sprintf("http://%s/", serverEndpoint),
 		nil,
 	)
 	if err != nil {
@@ -45,10 +52,12 @@ func main() {
 		syscall.Exit(1)
 	}
 
-	client := http.Client{}
+	client := &http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
 
 	for {
-		runRequests(req, &client)
+		runRequests(req, client)
 		time.Sleep(reqInterval * time.Second)
 	}
 }
