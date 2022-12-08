@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/unvelista/loggingPlayground/src/logging"
 	"github.com/unvelista/loggingPlayground/src/tracing"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	logger *log.Logger
+	logger *logrus.Entry
 )
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 		tp, err := tracing.InitTracerProvider(
 			context.Background(), serviceName, otelCollectorEndpoint)
 		if err != nil {
-			log.Fatal(err)
+			logrus.Fatal(err)
 		}
 		defer tracing.FlushAndShutdownTracerProvider(context.Background(), tp)
 	}
@@ -45,10 +45,14 @@ func startWebServerMux() {
 	cnt := 0
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		logger.Infof("received request: #%d", cnt)
+		logger.WithFields(logrus.Fields{
+			"customField1": "bar",
+			"customField2": 100,
+		}).Infof("received request: #%d", cnt)
 
 		cnt++
 
+		// NOTE: for testing multiline parsing of stack traces
 		// if cnt > 5 {
 		// 	panic("Waaaaaaaaa !!!")
 		// }
@@ -56,10 +60,6 @@ func startWebServerMux() {
 		body := fmt.Sprintf("Hello, world! %d", cnt)
 		w.Write([]byte(body))
 	})
-
-	// router.HandleFunc("/healthcheck/", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.WriteHeader(http.StatusOK)
-	// })
 
 	logger.Infoln("Running server on", endpoint)
 	http.Handle("/", router)

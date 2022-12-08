@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	logger *logrus.Logger
+	logger *logrus.Entry
 )
 
 func main() {
